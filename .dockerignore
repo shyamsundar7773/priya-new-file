@@ -1,0 +1,13 @@
+node_modules
+npm-debug.log
+.git
+.gitignore
+.env
+.env.*
+server/.env
+server/.env.*
+.expo
+android
+ios
+.DS_Store
+coverage

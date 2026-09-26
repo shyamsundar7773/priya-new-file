@@ -1,0 +1,33 @@
+services:
+  - type: web
+    name: priya-companion-backend
+    env: node
+    plan: free
+    buildCommand: npm ci --no-fund --no-audit
+    startCommand: npm run server
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_JWT_AUDIENCE
+        value: authenticated
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODELS
+        value: gemini-2.5-flash
+      - key: GEMINI_STT_MODEL
+        value: gemini-3.5-transcribe
+      - key: GEMINI_TTS_MODEL
+        value: gemini-3.8-flash-lite-tts
+      - key: GEMINI_TTS_VOICE
+        value: Kore
+      - key: GEMINI_LIVE_MODEL
+        value: gemini-3.8-live
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_MODELS
+        value: openai/gpt-oss-20b

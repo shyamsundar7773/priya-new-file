@@ -21,7 +21,8 @@ function loadEnvFile() {
 loadEnvFile();
 
 module.exports = {
-  port: Number(process.env.PORT || 3000),
+  host: process.env.HOST || (process.env.NODE_ENV === 'production' ? '0.0.0.0' : '127.0.0.1'),
+  port: Number(process.env.PORT || (process.env.NODE_ENV === 'production' ? 10000 : 3000)),
   supabaseUrl: process.env.SUPABASE_URL || '',
   supabaseJwtAudience: process.env.SUPABASE_JWT_AUDIENCE || 'authenticated',
   geminiApiKey: process.env.GEMINI_API_KEY || '',
