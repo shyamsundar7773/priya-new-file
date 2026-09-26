@@ -1,0 +1,51 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const { createGeminiSetup, validateLiveStartMessage } = require('./liveProxy');
+
+const setup = createGeminiSetup({ systemInstruction: 'You are Priya.' }, 'gemini-3.8-live');
+assert.deepEqual(setup.setup.generationConfig.responseModalities, ['AUDIO']);
+assert.deepEqual(setup.setup.inputAudioTranscription, {});
+assert.deepEqual(setup.setup.outputAudioTranscription, {});
+
+assert.equal(validateLiveStartMessage({ type: 'start', context: { systemInstruction: 'You are Priya.' } }), null);
+assert.equal(validateLiveStartMessage({ type: 'start', context: {} }), 'Live companion context is required.');
+assert.equal(validateLiveStartMessage({ type: 'audio', data: 'AA==' }), 'Live session must start with a start message.');
+assert.equal(validateLiveStartMessage({ type: 'start', context: { systemInstruction: 'x'.repeat(12_001) }}), 'Live companion context is too large.');
+
+const source = fs.readFileSync(require.resolve('./liveProxy'), 'utf8');
+assert.match(source, /await authenticate/);
+assert.match(source, /access_token/);
+assert.match(source, /realtimeInput/);
+assert.match(source, /audioStreamEnd/);
+assert.match(source, /responseModalities: \['AUDIO'\]/);
+assert.match(source, /state: 'reconnecting'/);
+
+const sessionSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'voice', 'liveSession.ts'), 'utf8');
+const providerSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'voice', 'geminiLiveCallProvider.ts'), 'utf8');
+const serviceSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'voice', 'callService.ts'), 'utf8');
+const screenSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'screens.tsx'), 'utf8');
+assert.match(sessionSource, /await this\.connect\(false\)/);
+assert.match(sessionSource, /setupComplete/);
+assert.match(sessionSource, /createReconnectBudget\(1\)/);
+assert.match(sessionSource, /generation !== this\.generation/);
+assert.match(sessionSource, /this\.speechDetector\.update/);
+assert.match(sessionSource, /this\.interrupt\(\)/);
+assert.doesNotMatch(providerSource, /if \(muted\) this\.session\?\.interrupt\(\)/);
+assert.match(providerSource, /claimActiveCall/);
+assert.match(sessionSource, /getDiagnostics\(\)/);
+assert.match(serviceSource, /if \(!this\.endPromise\)/);
+assert.match(serviceSource, /getDiagnostics\(\)/);
+assert.match(screenSource, /runCallControl/);
+assert.match(screenSource, /action_start/);
+assert.match(screenSource, /action_success/);
+assert.match(screenSource, /action_error/);
+assert.match(screenSource, /runCallControl\(next \? 'mute' : 'unmute'/);
+assert.match(screenSource, /runCallControl\(next \? 'speaker' : 'earpiece'/);
+assert.match(screenSource, /endCall\('back'\)/);
+assert.match(screenSource, /endCall\(\)/);
+assert.match(screenSource, /unmount_cleanup/);
+assert.match(screenSource, /Microphone access is needed for calls/);
+assert.match(screenSource, /Reconnecting…/);
+assert.match(screenSource, /unsubscribeRef\.current\?\.\(\)/);
+console.log('Stage 5 Gemini Live call contracts passed.');

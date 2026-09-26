@@ -1,0 +1,70 @@
+Priya Companion AI backend listening on port 3000
+Groq configured: true; Gemini configured: true
+[voice-stt] timestamp=2026-09-25T16:56:51.544Z request_received requestId=29642a0c-3990-4a9e-8a0d-a306a7918b65 method=POST path=/voice/transcribe
+[voice-stt] timestamp=2026-09-25T16:56:51.547Z response_sent requestId=29642a0c-3990-4a9e-8a0d-a306a7918b65 status=401 category=AUTHENTICATION elapsedMs=3
+[voice-stt] timestamp=2026-09-25T17:00:35.629Z request_received requestId=voice-stt-1790355630773-qjd201 method=POST path=/voice/transcribe
+[voice-stt] timestamp=2026-09-25T17:00:36.878Z auth_ok requestId=voice-stt-1790355630773-qjd201 elapsedMs=1249
+[voice-stt] timestamp=2026-09-25T17:00:36.885Z audio_received requestId=voice-stt-1790355630773-qjd201 mimeType=audio/m4a byteLength=69421
+[voice-stt] timestamp=2026-09-25T17:00:36.889Z provider_start requestId=voice-stt-1790355630773-qjd201 provider=Gemini model=gemini-3.5-transcribe
+[voice-stt] requestId=voice-stt-1790355630773-qjd201 operation=upload_start endpoint=https://generativelanguage.googleapis.com/upload/v1beta/files mimeType=audio/m4a decodedBytes=69421
+[voice-stt] requestId=voice-stt-1790355630773-qjd201 operation=upload_start status=200 success=true
+[voice-stt] requestId=voice-stt-1790355630773-qjd201 operation=upload_finalize status=200 success=true
+[voice-stt] requestId=voice-stt-1790355630773-qjd201 operation=uploaded_file fileNamePresent=true fileUriPresent=true mimeType=audio/m4a
+[voice-stt] requestId=voice-stt-1790355630773-qjd201 operation=interactions model=gemini-3.5-transcribe mimeType=audio/m4a
+[voice-stt] requestId=voice-stt-1790355630773-qjd201 operation=interactions status=400 success=false upstreamStatus=400 upstreamCode=INVALID_REQUEST
+[voice-stt] requestId=voice-stt-1790355630773-qjd201 operation=cleanup attempted=true success=true
+[voice-stt] timestamp=2026-09-25T17:00:42.471Z provider_result requestId=voice-stt-1790355630773-qjd201 operation=interactions endpoint=https://generativelanguage.googleapis.com/v1beta/interactions status=400 upstreamCode=INVALID_REQUEST category=invalid_request message=The AI provider rejected the request. elapsedMs=6842 success=false
+[voice-stt] timestamp=2026-09-25T17:00:42.472Z response_sent requestId=voice-stt-1790355630773-qjd201 status=502 category=PROVIDER_FAILURE elapsedMs=6843
+[voice-stt] timestamp=2026-09-25T17:00:42.542Z request_received requestId=voice-stt-1790355637778-gt1gjn method=POST path=/voice/transcribe
+[voice-stt] timestamp=2026-09-25T17:00:42.546Z auth_ok requestId=voice-stt-1790355637778-gt1gjn elapsedMs=4
+[voice-stt] timestamp=2026-09-25T17:00:42.661Z audio_received requestId=voice-stt-1790355637778-gt1gjn mimeType=audio/m4a byteLength=69421
+[voice-stt] timestamp=2026-09-25T17:00:42.662Z provider_start requestId=voice-stt-1790355637778-gt1gjn provider=Gemini model=gemini-3.5-transcribe
+[voice-stt] requestId=voice-stt-1790355637778-gt1gjn operation=upload_start endpoint=https://generativelanguage.googleapis.com/upload/v1beta/files mimeType=audio/m4a decodedBytes=69421
+[voice-stt] requestId=voice-stt-1790355637778-gt1gjn operation=upload_start status=200 success=true
+[voice-stt] requestId=voice-stt-1790355637778-gt1gjn operation=upload_finalize status=200 success=true
+[voice-stt] requestId=voice-stt-1790355637778-gt1gjn operation=uploaded_file fileNamePresent=true fileUriPresent=true mimeType=audio/m4a
+[voice-stt] requestId=voice-stt-1790355637778-gt1gjn operation=interactions model=gemini-3.5-transcribe mimeType=audio/m4a
+[voice-stt] requestId=voice-stt-1790355637778-gt1gjn operation=interactions status=400 success=false upstreamStatus=400 upstreamCode=INVALID_REQUEST
+[voice-stt] requestId=voice-stt-1790355637778-gt1gjn operation=cleanup attempted=true success=true
+[voice-stt] timestamp=2026-09-25T17:00:48.692Z provider_result requestId=voice-stt-1790355637778-gt1gjn operation=interactions endpoint=https://generativelanguage.googleapis.com/v1beta/interactions status=400 upstreamCode=INVALID_REQUEST category=invalid_request message=The AI provider rejected the request. elapsedMs=6150 success=false
+[voice-stt] timestamp=2026-09-25T17:00:48.692Z response_sent requestId=voice-stt-1790355637778-gt1gjn status=502 category=PROVIDER_FAILURE elapsedMs=6150
+[voice-stt] timestamp=2026-09-25T17:02:59.061Z request_received requestId=voice-stt-1790355774251-40535f method=POST path=/voice/transcribe
+[voice-stt] timestamp=2026-09-25T17:02:59.071Z auth_ok requestId=voice-stt-1790355774251-40535f elapsedMs=10
+[voice-stt] timestamp=2026-09-25T17:02:59.286Z audio_received requestId=voice-stt-1790355774251-40535f mimeType=audio/m4a byteLength=57854
+[voice-stt] timestamp=2026-09-25T17:02:59.295Z provider_start requestId=voice-stt-1790355774251-40535f provider=Gemini model=gemini-3.5-transcribe
+[voice-stt] requestId=voice-stt-1790355774251-40535f operation=upload_start endpoint=https://generativelanguage.googleapis.com/upload/v1beta/files mimeType=audio/m4a decodedBytes=57854
+[voice-stt] requestId=voice-stt-1790355774251-40535f operation=upload_start status=200 success=true
+[voice-stt] requestId=voice-stt-1790355774251-40535f operation=upload_finalize status=200 success=true
+[voice-stt] requestId=voice-stt-1790355774251-40535f operation=uploaded_file fileNamePresent=true fileUriPresent=true mimeType=audio/m4a
+[voice-stt] requestId=voice-stt-1790355774251-40535f operation=interactions model=gemini-3.5-transcribe mimeType=audio/m4a
+[voice-stt] requestId=voice-stt-1790355774251-40535f operation=interactions status=400 success=false upstreamStatus=400 upstreamCode=INVALID_REQUEST
+[voice-stt] requestId=voice-stt-1790355774251-40535f operation=cleanup attempted=true success=true
+[voice-stt] timestamp=2026-09-25T17:03:05.731Z provider_result requestId=voice-stt-1790355774251-40535f operation=interactions endpoint=https://generativelanguage.googleapis.com/v1beta/interactions status=400 upstreamCode=INVALID_REQUEST category=invalid_request message=The AI provider rejected the request. elapsedMs=6670 success=false
+[voice-stt] timestamp=2026-09-25T17:03:05.732Z response_sent requestId=voice-stt-1790355774251-40535f status=502 category=PROVIDER_FAILURE elapsedMs=6671
+[voice-stt] timestamp=2026-09-25T17:03:05.801Z request_received requestId=voice-stt-1790355781025-1sihgt method=POST path=/voice/transcribe
+[voice-stt] timestamp=2026-09-25T17:03:05.803Z auth_ok requestId=voice-stt-1790355781025-1sihgt elapsedMs=2
+[voice-stt] timestamp=2026-09-25T17:03:05.850Z audio_received requestId=voice-stt-1790355781025-1sihgt mimeType=audio/m4a byteLength=57854
+[voice-stt] timestamp=2026-09-25T17:03:05.851Z provider_start requestId=voice-stt-1790355781025-1sihgt provider=Gemini model=gemini-3.5-transcribe
+[voice-stt] requestId=voice-stt-1790355781025-1sihgt operation=upload_start endpoint=https://generativelanguage.googleapis.com/upload/v1beta/files mimeType=audio/m4a decodedBytes=57854
+[voice-stt] requestId=voice-stt-1790355781025-1sihgt operation=upload_start status=200 success=true
+[voice-stt] requestId=voice-stt-1790355781025-1sihgt operation=upload_finalize status=200 success=true
+[voice-stt] requestId=voice-stt-1790355781025-1sihgt operation=uploaded_file fileNamePresent=true fileUriPresent=true mimeType=audio/m4a
+[voice-stt] requestId=voice-stt-1790355781025-1sihgt operation=interactions model=gemini-3.5-transcribe mimeType=audio/m4a
+[voice-stt] requestId=voice-stt-1790355781025-1sihgt operation=interactions status=400 success=false upstreamStatus=400 upstreamCode=INVALID_REQUEST
+[voice-stt] requestId=voice-stt-1790355781025-1sihgt operation=cleanup attempted=true success=true
+[voice-stt] timestamp=2026-09-25T17:03:11.084Z provider_result requestId=voice-stt-1790355781025-1sihgt operation=interactions endpoint=https://generativelanguage.googleapis.com/v1beta/interactions status=400 upstreamCode=INVALID_REQUEST category=invalid_request message=The AI provider rejected the request. elapsedMs=5283 success=false
+[voice-stt] timestamp=2026-09-25T17:03:11.084Z response_sent requestId=voice-stt-1790355781025-1sihgt status=502 category=PROVIDER_FAILURE elapsedMs=5283
+[chat-timing] backend_received requestId=5f59ea9f-12ea-4523-82cb-3bb02e6fd9a4
+[chat-timing] request_validated requestId=5f59ea9f-12ea-4523-82cb-3bb02e6fd9a4 historyCount=8 userMessageChars=2
+[chat-timing] context_complete requestId=5f59ea9f-12ea-4523-82cb-3bb02e6fd9a4 durationMs=0 historyCount=8 contextChars=1372
+[chat-timing] provider_start requestId=5f59ea9f-12ea-4523-82cb-3bb02e6fd9a4 provider=groq model=openai/gpt-oss-20b historyCount=8 contextChars=1372
+[chat-timing] provider_first_response requestId=5f59ea9f-12ea-4523-82cb-3bb02e6fd9a4 provider=groq model=openai/gpt-oss-20b durationMs=610 streaming=false
+[chat-timing] provider_complete requestId=5f59ea9f-12ea-4523-82cb-3bb02e6fd9a4 provider=groq model=openai/gpt-oss-20b durationMs=610
+[chat-timing] backend_response requestId=5f59ea9f-12ea-4523-82cb-3bb02e6fd9a4 provider=groq model=openai/gpt-oss-20b durationMs=637 providerDurationMs=610
+[chat-timing] backend_received requestId=355a261d-4b87-4b4a-9bf4-cf059fb12abf
+[chat-timing] request_validated requestId=355a261d-4b87-4b4a-9bf4-cf059fb12abf historyCount=10 userMessageChars=24
+[chat-timing] context_complete requestId=355a261d-4b87-4b4a-9bf4-cf059fb12abf durationMs=0 historyCount=10 contextChars=1699
+[chat-timing] provider_start requestId=355a261d-4b87-4b4a-9bf4-cf059fb12abf provider=groq model=openai/gpt-oss-20b historyCount=10 contextChars=1699
+[chat-timing] provider_first_response requestId=355a261d-4b87-4b4a-9bf4-cf059fb12abf provider=groq model=openai/gpt-oss-20b durationMs=601 streaming=false
+[chat-timing] provider_complete requestId=355a261d-4b87-4b4a-9bf4-cf059fb12abf provider=groq model=openai/gpt-oss-20b durationMs=601
+[chat-timing] backend_response requestId=355a261d-4b87-4b4a-9bf4-cf059fb12abf provider=groq model=openai/gpt-oss-20b durationMs=629 providerDurationMs=601

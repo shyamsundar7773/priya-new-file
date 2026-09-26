@@ -1,0 +1,47 @@
+{
+  "expo": {
+    "name": "PriyaCompanion-NewUX",
+    "slug": "PriyaCompanion-NewUX",
+    "scheme": "priyacompanion",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "softwareKeyboardLayoutMode": "resize",
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
+      ],
+      "package": "com.shyamsundar7773.PriyaCompanionNewUX"
+    },
+    "plugins": [
+      "expo-audio",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Priya Companion to access photos for message attachments.",
+          "cameraPermission": "Allow Priya Companion to use the camera for message attachments.",
+          "microphonePermission": false
+        }
+      ],
+      "expo-secure-store",
+      "expo-web-browser",
+      "./plugins/withDevelopmentCleartextTraffic"
+    ],
+    "web": {
+      "favicon": "./assets/favicon.png"
+    }
+  }
+}

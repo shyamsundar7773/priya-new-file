@@ -1,0 +1,11 @@
+{
+  "name": "@priya/test-console",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Independent contracts for the Priya Test Console and AI Test Agent",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "tsc -p tsconfig.json && node dist/contract-tests.js"
+  }
+}
+
