@@ -2,11 +2,16 @@ import type { AIProviderStatus, Companion, Message, MessageMention, Relationship
 import type { CompanionAIContext } from './attachmentContext';
 import type { Attachment } from '../attachments/model';
 import type { GroupAIContext } from '../groups/context';
+import type { InteractionEnvelope, PersonaContext } from '../brain/types';
+import type { RelationshipContext } from '../relationship/context';
 
 export type AIConversationMode = 'chat' | 'voice' | 'call' | 'group';
 
 export interface AIRequest {
   requestId?: string;
+  interaction: InteractionEnvelope;
+  personaContext: PersonaContext;
+  relationshipBoundary?: RelationshipContext;
   userMessage: string;
   history: Message[];
   companion: Companion;

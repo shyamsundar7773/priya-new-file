@@ -36,7 +36,8 @@ import { addExplicitMention, getMentionQuery, replaceMentionToken } from './grou
 import { transcribeVoiceRecording } from './voice/backendSpeechToText';
 import { createIdempotentStop } from './voice/lifecycle';
 import { createAssistantVoiceMessage, createVoiceMessageRequestId, createVoiceMessageTimer, createVoiceUserMessage, retryVoiceOperation, safeVoiceMessageFailureReason } from './voice/messagePipeline';
-import { extractMemoryCandidate, promoteMemoryCandidate } from './storage/memoryStore';
+import { extractMemoryCandidate } from './storage/memoryStore';
+import { localMemoryProvider } from './memory/provider';
 import { appendScheduledMoment, cancelScheduledMoment } from './proactive/engine';
 import { selectGroupResponseTarget } from './groups/context';
 import { createAttachment, markAttachmentState, type Attachment } from './attachments/model';
@@ -494,7 +495,7 @@ export function ChatScreen({ companionId }: { companionId?: string }) {
       });
       if (candidate.status !== 'rejected') {
         updateCompanion(companion.id, {
-          memories: promoteMemoryCandidate(companion.memories, candidate),
+          memories: localMemoryProvider.promote(companion.memories, candidate),
         });
       }
       const response = await retryVoiceOperation(() => requestAIResponse(companion.id, transcription.text, {
@@ -1058,6 +1059,7 @@ export function GroupChatScreen({ groupId }: { groupId: string }) {
         groupId: group.id,
         groupMessages: [...messages, { ...voiceMessage, text: transcription.text }],
         mentions: target ? [{ memberId: target.id, displayName: target.name }] : [],
+        mode: 'voice',
       }));
       if (response.status !== 'success' || !response.text) throw new Error(response.error?.message || 'Group voice response unavailable.');
       const assistantText = response.text;

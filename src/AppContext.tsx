@@ -19,6 +19,7 @@ import { applyRelationshipSignal } from './relationship/engine';
 import type { Attachment } from './attachments/model';
 import { BackendTextToSpeechProvider } from './voice/backendTts';
 import { createAssistantVoiceMessage } from './voice/messagePipeline';
+import { appendArchiveSafely, archiveRecordFromMessage, conversationArchive } from './archive';
 
 const AppContext = createContext<AppContextValue | null>(null);
 
@@ -254,7 +255,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setEngineStateValue(s);
   }, []);
 
-  const requestAIResponse = useCallback(async (companionId: string, message: string, options?: { groupId?: string; groupMessages?: Message[]; mentions?: MessageMention[]; attachments?: Attachment[]; mode?: import('./ai/types').AIConversationMode; requestId?: string }): Promise<AIResponse> => {
+  const requestAIResponse = useCallback(async (companionId: string, message: string, options?: { groupId?: string; groupMessages?: Message[]; mentions?: MessageMention[]; attachments?: Attachment[]; mode?: import('./ai/types').AIConversationMode; modality?: import('./brain/types').InteractionModality; requestId?: string }): Promise<AIResponse> => {
     const companion = companions.find((item) => item.id === companionId);
     if (!companion) {
       return {
@@ -270,7 +271,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (options?.groupId && (!group || !group.companionIds.includes(companionId))) {
         return { status: 'error', provider: 'local', error: { code: 'AUTHENTICATION', message: 'The selected companion is not a member of this group.' } };
       }
-      const response = await brain.respond(buildAIRequest(companion, history, message, engineState, options?.mode || (options?.groupId ? 'group' : 'chat'), options?.groupId, options?.groupMessages, options?.mentions, authUserId || undefined, group, groups.find((item) => item.id === options?.groupId) ? companions : [], options?.attachments || [], options?.requestId));
+      const response = await brain.respond(buildAIRequest(companion, history, message, engineState, options?.mode || (options?.groupId ? 'group' : 'chat'), options?.groupId, options?.groupMessages, options?.mentions, authUserId || undefined, group, groups.find((item) => item.id === options?.groupId) ? companions : [], options?.attachments || [], options?.requestId, options?.modality));
       if (currentAuthUserRef.current !== authUserId) {
         return { status: 'error', provider: 'local', error: { code: 'AUTHENTICATION', message: 'The session changed while the request was pending.' } };
       }
@@ -294,6 +295,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       ...prev,
       [companionId]: [...(prev[companionId] || []).filter((item) => item.id !== msg.id), msg],
     }));
+    if (authUserId) {
+      void appendArchiveSafely(conversationArchive, archiveRecordFromMessage({
+        userId: authUserId,
+        companionId,
+        conversationId: companionId,
+        message: msg,
+      }));
+    }
     if (!authUserId || !msg.fromMe) return;
     try {
       setCompanions((prev) => prev.map((companion) => {
@@ -321,11 +330,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [authUserId]);
 
   const updateMessage = useCallback((companionId: string, msgId: string, update: Partial<Message>) => {
+    const existing = conversations[companionId]?.find((message) => message.id === msgId);
     setConversations((prev) => ({
       ...prev,
       [companionId]: (prev[companionId] || []).map((m) => (m.id === msgId ? { ...m, ...update } : m)),
     }));
-  }, []);
+    if (authUserId && existing) {
+      void appendArchiveSafely(conversationArchive, archiveRecordFromMessage({
+        userId: authUserId,
+        companionId,
+        conversationId: companionId,
+        message: { ...existing, ...update },
+      }));
+    }
+  }, [authUserId, conversations]);
 
   const toggleCompanionPause = useCallback((companionId: string) => {
     setCompanions((prev) => prev.map((c) => (c.id === companionId ? { ...c, isPaused: !c.isPaused } : c)));
@@ -379,7 +397,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       [groupId]: [...(prev[groupId] || []).filter((item) => item.id !== msg.id), msg]
         .sort((left, right) => left.timestamp.getTime() - right.timestamp.getTime()),
     }));
-  }, []);
+    const group = groups.find((item) => item.id === groupId);
+    const companionId = msg.responseTargetId || group?.companionIds[0];
+    if (authUserId && group && companionId) {
+      void appendArchiveSafely(conversationArchive, archiveRecordFromMessage({
+        userId: authUserId,
+        companionId,
+        conversationId: group.conversationId || group.id,
+        message: msg,
+        extraMetadata: { groupId },
+      }));
+    }
+  }, [authUserId, groups]);
 
   const updateGroup = useCallback((groupId: string, update: Partial<Group>) => {
     setGroups((prev) => prev.map((g) => (g.id === groupId ? { ...g, ...update, updatedAt: new Date().toISOString() } : g)));
@@ -410,7 +439,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const initialConfig = updateProactiveEventStatus(companion.proactive, event.id, 'dispatching');
       await persistProactive(companion.id, initialConfig);
       const prompt = `Write a brief, warm proactive ${event.channel} check-in for the user. Context: ${event.payload?.message || event.reason}. Speak naturally as ${companion.name}; do not mention scheduling or automation.`;
-      const response = await requestAIResponse(companion.id, prompt);
+      const response = await requestAIResponse(companion.id, prompt, { modality: 'proactive' });
       if (response.status !== 'success' || !response.text?.trim()) {
         throw new Error(response.error?.message || 'The companion could not prepare a proactive message.');
       }

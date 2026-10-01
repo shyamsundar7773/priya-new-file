@@ -52,6 +52,7 @@
     "test:stage9": "node server/stage9-integration-test.js",
     "test:auth": "node scripts/auth-redirect-test.cjs",
     "test:contracts": "node scripts/source-contract-test.cjs",
+    "test:phase1": "node scripts/phase1-contract-test.cjs && node scripts/phase1-architecture-contract-test.cjs",
     "test:stage14": "node scripts/stage14-contract-test.cjs",
     "test:stage15": "node server/security-contract-test.js",
     "test:stage16": "node server/reliability-contract-test.js",

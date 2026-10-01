@@ -3,11 +3,16 @@ const { requestGemini } = require('./gemini');
 const { classifyProviderError } = require('./reliability');
 
 function buildSystemInstruction(companion, request = {}) {
-  const config = companion?.aiConfig;
+  const persona = request.personaContext || {};
+  const config = persona.aiConfig || companion?.aiConfig;
+  const name = persona.name || companion?.name || 'an AI companion';
+  const identity = persona.identity || companion?.tagline || 'a consistent, caring companion';
+  const personality = persona.personality || companion?.personality || 'friendly, caring, and natural.';
+  const language = persona.language || companion?.language || 'English';
   const group = request.groupContext;
   const attached = request.attachedContext || {};
   const memories = Array.isArray(attached.memories) ? attached.memories : Array.isArray(request.memoryContext) ? request.memoryContext : [];
-  const relationship = attached.relationship || request.relationshipContext;
+  const relationship = request.relationshipBoundary || attached.relationship || request.relationshipContext;
   const shortTerm = Array.isArray(attached.shortTerm) ? attached.shortTerm : Array.isArray(request.history) ? request.history.slice(-12) : [];
   const proactive = Array.isArray(attached.proactive) ? attached.proactive : [];
   const attachments = Array.isArray(attached.attachments) ? attached.attachments : [];
@@ -16,10 +21,10 @@ function buildSystemInstruction(companion, request = {}) {
     group?.targetCompanionId ? `Address the current response as the selected group participant with id ${group.targetCompanionId}. Do not reveal private participant context.` : '',
     group?.memories?.length ? `Explicit group memories:\n${group.memories.map((memory) => `- ${memory.text || memory.content || memory.fact || ''}`).join('\n')}` : '',
     group?.proactive?.length ? `Explicit group context:\n${group.proactive.join('\n')}` : '',
-    `You are ${companion?.name || 'an AI companion'}.`,
-    `Companion identity: ${companion?.tagline || 'a consistent, caring companion'}.`,
-    `Personality: ${companion?.personality || 'friendly, caring, and natural.'}`,
-    `Language: ${companion?.language || 'English'}.`,
+    `You are ${name}.`,
+    `Companion identity: ${identity}.`,
+    `Personality: ${personality}`,
+    `Language: ${language}.`,
     config ? `Personality controls: warmth ${config.personality.warmth}%, playfulness ${config.personality.playfulness}%, depth ${config.personality.depth}%, formality ${config.personality.formality}%.` : '',
     config?.language?.codeSwitching ? `Use natural code-switching between ${config.language.primary} and ${config.language.secondary || companion.language}.` : '',
     group ? '' : memories.length ? `Relevant remembered user context:\n${memories.map((memory) => `- ${typeof memory === 'string' ? memory : memory.text || memory.content || memory.fact || ''}`).filter(Boolean).join('\n')}` : '',

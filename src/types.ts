@@ -374,6 +374,7 @@ export interface AppContextValue extends AppState {
     mentions?: MessageMention[];
     attachments?: Attachment[];
     mode?: import('./ai/types').AIConversationMode;
+    modality?: import('./brain/types').InteractionModality;
     requestId?: string;
   }) => Promise<import('./ai/types').AIResponse>;
   evaluateProactiveForCompanion: (companionId: string) => import('./proactive/engine').ProactiveDecision;
