@@ -4,6 +4,7 @@
   "main": "index.ts",
   "dependencies": {
     "@expo/vector-icons": "^15.0.2",
+    "@getzep/zep-cloud": "^3.30.0",
     "@react-native-async-storage/async-storage": "^3.1.1",
     "@supabase/supabase-js": "^2.117.0",
     "expo": "~57.0.24",
@@ -59,6 +60,7 @@
     "test:stage17": "node server/stage17-ux-contract-test.js",
     "test:stage18": "node scripts/stage18-contract-test.cjs",
     "test:stage19": "node server/stage19-authorization-contract-test.js",
+    "test:zep-memory": "node server/zep-memory-provider-test.js",
     "test:chat-keyboard": "node scripts/chat-keyboard-composer-contract-test.cjs"
   },
   "private": true

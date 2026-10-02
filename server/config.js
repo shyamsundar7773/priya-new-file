@@ -38,5 +38,8 @@ module.exports = {
   sttApiKey: process.env.STT_API_KEY || '',
   geminiModels: parseList(process.env.GEMINI_MODELS, 'gemini-2.5-flash'),
   groqModels: parseList(process.env.GROQ_MODELS, 'llama-3.3-70b-versatile'),
+  memoryProvider: (process.env.MEMORY_PROVIDER || 'local').toLowerCase(),
+  zepApiKey: process.env.ZEP_API_KEY || '',
+  zepApiUrl: process.env.ZEP_API_URL || 'https://api.getzep.com/api/v2',
   allowedOrigins: parseList(process.env.ALLOWED_ORIGINS, 'http://localhost:8081,http://localhost:19006,http://localhost:3000'),
 };
