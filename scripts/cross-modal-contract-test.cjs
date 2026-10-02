@@ -1,12 +1,40 @@
 const { execFileSync } = require('node:child_process');
 const fs = require('node:fs');
-const os = require('node:os');
+const Module = require('node:module');
 const path = require('node:path');
 
 const projectRoot = path.resolve(__dirname, '..');
-const outputDir = fs.mkdtempSync(path.join(os.tmpdir(), 'priya-cross-modal-'));
+const outputDir = path.join(projectRoot, '.tmp-cross-modal-contract');
+fs.rmSync(outputDir, { recursive: true, force: true });
+fs.mkdirSync(outputDir, { recursive: true });
 
-try {
+const nativeModuleMocks = new Map([
+  ['expo', { requireOptionalNativeModule: () => null }],
+  ['expo-audio', { AudioModule: {} }],
+  ['expo-secure-store', {
+    getItemAsync: async () => null,
+    setItemAsync: async () => {},
+    deleteItemAsync: async () => {},
+  }],
+  ['@react-native-async-storage/async-storage', {
+    default: {
+      getItem: async () => null,
+      setItem: async () => {},
+      removeItem: async () => {},
+    },
+  }],
+  ['react-native', { Platform: { OS: 'test' } }],
+]);
+const originalLoad = Module._load;
+const hadDevFlag = Object.prototype.hasOwnProperty.call(globalThis, '__DEV__');
+const originalDevFlag = globalThis.__DEV__;
+globalThis.__DEV__ = false;
+Module._load = function loadWithNativeBoundaryMock(request, parent, isMain) {
+  if (nativeModuleMocks.has(request)) return nativeModuleMocks.get(request);
+  return originalLoad.call(this, request, parent, isMain);
+};
+
+async function run() {
   execFileSync(
     process.execPath,
     [
@@ -23,8 +51,18 @@ try {
     ],
     { cwd: projectRoot, stdio: 'inherit' },
   );
-  require(path.join(outputDir, 'src/brain/crossModalContinuityTests.js')).runCrossModalContinuityTests()
-    .then(() => console.log('Cross-modal continuity tests passed.'));
-} finally {
-  process.on('exit', () => fs.rmSync(outputDir, { recursive: true, force: true }));
+  await require(path.join(outputDir, 'src/brain/crossModalContinuityTests.js')).runCrossModalContinuityTests();
+  console.log('Cross-modal continuity tests passed.');
 }
+
+run()
+  .catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  })
+  .finally(() => {
+    Module._load = originalLoad;
+    if (hadDevFlag) globalThis.__DEV__ = originalDevFlag;
+    else delete globalThis.__DEV__;
+    fs.rmSync(outputDir, { recursive: true, force: true });
+  });

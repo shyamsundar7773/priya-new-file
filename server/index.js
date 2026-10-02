@@ -6,6 +6,7 @@ const { attachLiveProxy } = require('./liveProxy');
 const { transcribeAudio } = require('./providers/stt');
 const { randomUUID } = require('node:crypto');
 const { bindAuthenticatedIdentity, publicError, originAllowed } = require('./security');
+const { createZepMemoryProvider } = require('./memory/zepProvider');
 
 function sendJson(res, status, body, origin) {
   const corsOrigin = originAllowed(origin, config.allowedOrigins) ? (origin || config.allowedOrigins[0]) : 'null';
@@ -37,6 +38,11 @@ const voiceDiagnosticsEnabled = process.env.NODE_ENV !== 'production';
 
 function logVoice(category, fields) {
   if (voiceDiagnosticsEnabled) console.log(`[voice-${category}] timestamp=${new Date().toISOString()} ${fields}`);
+}
+
+function sanitizeForLog(value) {
+  if (typeof value !== 'string') return 'unknown';
+  return value.trim().slice(0, 64) || 'unknown';
 }
 
 function safeProviderFields(error) {
@@ -75,6 +81,7 @@ function createServer() {
     if (req.method !== 'POST' || !['/chat', '/tts', '/voice/transcribe'].includes(req.url)) return sendJson(res, 404, { error: 'Not found.' }, req.headers.origin);
     const requestedRequestId = typeof req.headers['x-request-id'] === 'string' ? req.headers['x-request-id'].slice(0, 128) : '';
     const requestId = requestedRequestId || randomUUID();
+    const zepMemory = createZepMemoryProvider(config);
     const isVoiceRoute = req.url === '/voice/transcribe' || req.url === '/tts';
     const receivedAt = Date.now();
     if (isVoiceRoute) logVoice(req.url === '/voice/transcribe' ? 'stt' : 'tts', `request_received requestId=${requestId} method=${req.method} path=${req.url}`);
@@ -129,8 +136,28 @@ function createServer() {
         return sendJson(res, 400, { error: 'userMessage and companion are required.' }, req.headers.origin);
       }
       const timing = { requestId, receivedAt };
+      const conversationId = request?.interaction?.conversationId || request?.conversationId || request?.companion?.id || `chat-${request.requestId || requestId}`;
+      const requestForZep = zepMemory?.isEnabled?.() ? await zepMemory.enrichRequestContext(request, { userId: user.id, conversationId }) : request;
       console.log(`[chat-timing] request_validated requestId=${requestId} historyCount=${Array.isArray(request.history) ? request.history.length : 0} userMessageChars=${typeof request.userMessage === 'string' ? request.userMessage.length : 0}`);
-      const result = await routeAI({ ...bindAuthenticatedIdentity(request, user.id), timing }, config);
+      const result = await routeAI({ ...bindAuthenticatedIdentity(requestForZep, user.id), timing }, config);
+      if (zepMemory?.isEnabled?.() && result?.status === 'success') {
+        await zepMemory.appendTurn({
+          userId: user.id,
+          conversationId,
+          role: 'user',
+          content: request.userMessage,
+          timestamp: new Date().toISOString(),
+          metadata: { companionId: request.companion?.id || request?.interaction?.companionId, modality: request?.interaction?.modality || 'text', requestId },
+        }).catch((error) => console.warn(`[zep] memory_write_failed userId=${sanitizeForLog(user.id)} conversationId=${sanitizeForLog(conversationId)} role=user errorName=${error?.name || 'UnknownError'} message=${error?.message || 'unknown'}`));
+        await zepMemory.appendTurn({
+          userId: user.id,
+          conversationId,
+          role: 'assistant',
+          content: result.text,
+          timestamp: new Date().toISOString(),
+          metadata: { companionId: request.companion?.id || request?.interaction?.companionId, modality: request?.interaction?.modality || 'text', requestId, provider: result.provider, model: result.model },
+        }).catch((error) => console.warn(`[zep] memory_write_failed userId=${sanitizeForLog(user.id)} conversationId=${sanitizeForLog(conversationId)} role=assistant errorName=${error?.name || 'UnknownError'} message=${error?.message || 'unknown'}`));
+      }
       const backendMs = Date.now() - receivedAt;
       console.log(`[chat-timing] backend_response requestId=${requestId} provider=${result.provider || timing.provider || 'unknown'} model=${result.model || timing.model || 'unknown'} durationMs=${backendMs} providerDurationMs=${timing.providerMs ?? 'unknown'}`);
       res.setHeader('X-Request-Id', requestId);

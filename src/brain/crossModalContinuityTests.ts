@@ -5,6 +5,7 @@ import { archiveRecordFromMessage } from '../archive/types';
 import { appendArchiveSafely } from '../archive/failureIsolation';
 import { SupabaseConversationArchive } from '../archive/supabaseArchive';
 import type { Message } from '../types';
+import { GeminiLiveSession } from '../voice/liveSession';
 
 function assert(condition: boolean, message: string): void {
   if (!condition) throw new Error(`Cross-modal continuity test failed: ${message}`);
@@ -74,6 +75,13 @@ export async function runCrossModalContinuityTests(): Promise<void> {
     assert(Boolean(request.interaction.relationshipContext) || request.interaction.relationshipContext === undefined, 'relationship context remains in the same boundary across modalities');
     assert(Array.isArray(request.interaction.memoryContext), 'all modalities pass a concrete memoryContext array');
   }
+
+  const observedLiveTurns: string[] = [];
+  const liveSemanticSession = new GeminiLiveSession({ onSemanticTurn: (turn) => observedLiveTurns.push(turn) });
+  (liveSemanticSession as any).handleMessage(JSON.stringify({ type: 'server', payload: { serverContent: { inputTranscription: { text: 'My favourite breakfast is idli.' }, turnComplete: true } } }), 0);
+  assert(observedLiveTurns.length === 1 && observedLiveTurns[0] === 'My favourite breakfast is idli.', 'Gemini Live emits one semantic turn per completed user turn from the same transcript boundary');
+  (liveSemanticSession as any).handleMessage(JSON.stringify({ type: 'server', payload: { serverContent: { turnComplete: true } } }), 0);
+  assert(observedLiveTurns.length === 1, 'duplicate turn-complete callbacks are ignored without re-dispatching the same semantic turn');
 
   const textToVoiceCompanion = { ...companion, memories: memoryProvider.retrieveRelevant(allFacts, { companionId: companion.id, userId: userA, query: 'What is my favourite breakfast?' }) };
   const voiceAnswerRequest = buildAIRequest(textToVoiceCompanion, [], 'What is my favourite breakfast?', 'online', 'chat', undefined, [], [], userA, undefined, [], [], 'req-breakfast', 'voice_message');

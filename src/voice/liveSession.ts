@@ -13,6 +13,7 @@ export interface LiveSessionEvents {
   onStateChange?: (state: LiveSessionState, error?: string) => void;
   onInputTranscript?: (text: string) => void;
   onOutputTranscript?: (text: string) => void;
+  onSemanticTurn?: (text: string) => void;
 }
 
 function websocketEndpoint(url: string, token: string): string {
@@ -88,6 +89,7 @@ export class GeminiLiveSession {
   private firstOutputAt?: number;
   private firstPlaybackAt?: number;
   private requestId = 'unknown';
+  private pendingSemanticTurn?: string;
 
   constructor(private readonly events: LiveSessionEvents = {}) {
     this.output = new PcmAudioOutput((playing) => {
@@ -101,6 +103,10 @@ export class GeminiLiveSession {
       }
       else if (!this.responseActive && !this.speechActive && this.state !== 'reconnecting') this.setState('connected');
     });
+  }
+
+  setSemanticTurnHandler(handler: (turnText: string) => void): void {
+    this.events.onSemanticTurn = handler;
   }
 
   getDiagnostics(): { sessionState: LiveSessionState; websocketState: 'none' | 'connecting' | 'open' | 'closing' | 'closed'; outputBusy: boolean } {
@@ -129,6 +135,7 @@ export class GeminiLiveSession {
     this.context = context;
     this.token = token;
     this.currentUserId = session?.data.session?.user.id;
+    this.pendingSemanticTurn = undefined;
     this.requestId = context.requestId || `call-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     this.reconnectAllowed = createReconnectBudget(1);
     this.speechDetector.reset();
@@ -188,6 +195,7 @@ export class GeminiLiveSession {
   async stop(): Promise<void> {
     if (this.stopping) return;
     this.stopping = true;
+    this.pendingSemanticTurn = undefined;
     this.startReject?.(new Error('Call ended.'));
     this.generation += 1;
     this.clearConnectionTimer();
@@ -339,6 +347,7 @@ export class GeminiLiveSession {
     const output = content?.outputTranscription as { text?: string } | undefined;
     if (input?.text) {
       this.events.onInputTranscript?.(input.text);
+      this.pendingSemanticTurn = input.text.trim() || undefined;
       this.discardOutputUntilInputTurn = false;
       if (!this.speechActive) this.setState('thinking');
     }
@@ -366,6 +375,11 @@ export class GeminiLiveSession {
       }
     }
     if (content?.turnComplete) {
+      const completedTurn = this.pendingSemanticTurn;
+      if (completedTurn) {
+        this.events.onSemanticTurn?.(completedTurn);
+        this.pendingSemanticTurn = undefined;
+      }
       this.responseActive = false;
       if (!this.output.isBusy && !this.speechActive) this.setState('connected');
     }

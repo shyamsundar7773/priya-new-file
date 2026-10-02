@@ -2,7 +2,7 @@ import type { AudioStreamBuffer } from 'expo-audio';
 import { setAudioModeAsync } from 'expo-audio';
 import type { CallProvider } from './types';
 import { GeminiLiveSession, type LiveSessionEvents, type LiveSessionState, type LiveVoiceContext } from './liveSession';
-import { claimActiveCall, releaseActiveCall } from './callState';
+import { claimActiveCall, releaseActiveCall, SingleFlight } from './callState';
 
 export class GeminiLiveCallProvider implements CallProvider {
   private session?: GeminiLiveSession;
@@ -10,18 +10,29 @@ export class GeminiLiveCallProvider implements CallProvider {
   private muted = false;
   private generation = 0;
   private listeners = new Set<(state: LiveSessionState, error?: string) => void>();
+  private semanticTurnHandler?: (turnText: string) => void;
+  private readonly startFlight = new SingleFlight<void>();
 
-  async start(_companionId: string, context?: LiveVoiceContext): Promise<void> {
+  start(_companionId: string, context?: LiveVoiceContext): Promise<void> {
+    return this.startFlight.run(() => this.startSession(_companionId, context));
+  }
+
+  private async startSession(_companionId: string, context?: LiveVoiceContext): Promise<void> {
     if (!context) throw new Error('Companion context is required for Gemini Live.');
     if (this.session) await this.end();
-    await claimActiveCall(this, () => this.stopSession());
     const generation = ++this.generation;
+    await claimActiveCall(this, () => this.stopSession());
+    if (generation !== this.generation) {
+      await releaseActiveCall(this);
+      throw new Error('Call ended.');
+    }
     const events: LiveSessionEvents = {
       onStateChange: (state, error) => {
         if (generation !== this.generation || !this.session) return;
         this.state = state;
         this.listeners.forEach((listener) => listener(state, error));
       },
+      onSemanticTurn: (turnText) => this.semanticTurnHandler?.(turnText),
     };
     const session = new GeminiLiveSession(events);
     this.session = session;
@@ -47,12 +58,21 @@ export class GeminiLiveCallProvider implements CallProvider {
     this.state = 'ended';
   }
 
+  setSemanticTurnHandler(handler: (turnText: string) => void): void {
+    this.semanticTurnHandler = handler;
+    this.session?.setSemanticTurnHandler(handler);
+  }
+
   async setMuted(muted: boolean): Promise<void> {
     this.muted = muted;
   }
 
   async setSpeaker(speaker: boolean): Promise<void> {
     await setAudioModeAsync({ shouldRouteThroughEarpiece: !speaker });
+  }
+
+  setListening(): void {
+    this.session?.listeningStarted();
   }
 
   sendAudio(buffer: AudioStreamBuffer): void {

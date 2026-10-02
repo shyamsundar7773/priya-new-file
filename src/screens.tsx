@@ -41,6 +41,7 @@ import { localMemoryProvider } from './memory/provider';
 import { appendScheduledMoment, cancelScheduledMoment } from './proactive/engine';
 import { selectGroupResponseTarget } from './groups/context';
 import { createAttachment, markAttachmentState, type Attachment } from './attachments/model';
+import { appendArchiveSafely, archiveRecordFromMessage, conversationArchive } from './archive';
 
 const palette = {
   dark: {
@@ -1197,7 +1198,7 @@ export function SearchScreen() {
 }
 
 export function VoiceCallScreen({ companionId }: { companionId?: string }) {
-  const { companions, conversations, theme, returnToChat, addMessage, engineState, authUserId } = useApp();
+  const { companions, conversations, theme, returnToChat, addMessage, engineState, authUserId, requestAIResponse } = useApp();
   const c = getColorTheme(theme);
   const companion = companions.find((item) => item.id === companionId) || companions[0];
   const [muted, setMuted] = useState(false);
@@ -1283,6 +1284,47 @@ export function VoiceCallScreen({ companionId }: { companionId?: string }) {
     callStateRef.current = resolved;
     if (mountedRef.current) setCallState(resolved);
   }, []);
+  const handleLiveSemanticTurn = useCallback(async (turnText: string) => {
+    const transcript = turnText.trim();
+    if (!transcript || !authUserId || endedRef.current) return;
+    const liveRequestId = `live-turn-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    if (__DEV__) console.log(`[live-semantic] brain_dispatch requestId=${liveRequestId} length=${transcript.length}`);
+    try {
+      const request = buildAIRequest(companion, conversations[companion.id] || [], transcript, engineState, 'call', undefined, [], [], authUserId || undefined, undefined, [], [], liveRequestId, 'live_call');
+      if (__DEV__) console.log(`[live-semantic] memory_context_attached requestId=${liveRequestId} memoryCount=${request.memoryContext.length}`);
+      await requestAIResponse(companion.id, transcript, { mode: 'call', modality: 'live_call', requestId: liveRequestId });
+      const archiveMessage: Message = {
+        id: `live-semantic-${liveRequestId}`,
+        fromMe: true,
+        type: 'call',
+        text: transcript,
+        status: 'sent',
+        timestamp: new Date(),
+        callId: callIdRef.current,
+        callStatus: 'ended',
+        callOutcome: 'completed',
+        callProvider: 'gemini-live',
+        callUserId: authUserId || undefined,
+        callCompanionId: companion.id,
+      };
+      await appendArchiveSafely(conversationArchive, archiveRecordFromMessage({
+        userId: authUserId,
+        companionId: companion.id,
+        conversationId: companion.id,
+        message: archiveMessage,
+        extraMetadata: {
+          callId: callIdRef.current,
+          callProvider: 'gemini-live',
+          callUserId: authUserId,
+          callCompanionId: companion.id,
+          modality: 'live_call',
+        },
+      }));
+      if (__DEV__) console.log(`[live-semantic] archive_success requestId=${liveRequestId} callId=${callIdRef.current || 'unknown'}`);
+    } catch (error: unknown) {
+      if (__DEV__) console.warn(`[live-semantic] archive_failed requestId=${liveRequestId} category=brain_bridge error=${error instanceof Error ? error.message : 'unknown'}`);
+    }
+  }, [authUserId, companion, conversations, engineState, requestAIResponse]);
   const friendlyCallError = useCallback((error: string, beforeReady: boolean) => {
     const normalized = error.toLowerCase();
     if (normalized.includes('permission') || normalized.includes('microphone')) return 'Microphone access is needed for calls.';
@@ -1356,6 +1398,7 @@ export function VoiceCallScreen({ companionId }: { companionId?: string }) {
           timestamp: endedAt,
         });
       }
+      callService.setSemanticTurnHandler(() => undefined);
       returnToChat(companion.id);
       if (cleanupFailed) throw cleanupError;
     })();
@@ -1419,6 +1462,7 @@ export function VoiceCallScreen({ companionId }: { companionId?: string }) {
     };
     unsubscribeRef.current?.();
     unsubscribeRef.current = callService.onStateChange(onProviderState);
+    callService.setSemanticTurnHandler(handleLiveSemanticTurn);
     const request = buildAIRequest(companion, conversations[companion.id] || [], '', engineState, 'call', undefined, [], [], authUserId || undefined);
     try {
       await callService.start(companion.id, {
@@ -1434,7 +1478,7 @@ export function VoiceCallScreen({ companionId }: { companionId?: string }) {
       startInProgressRef.current = false;
       await failAttempt(generation, error instanceof Error ? error.message : 'Call connection failed.');
     }
-  }, [audioStream.stream, authUserId, callService, companion, conversations, engineState, failAttempt, finishCall, logCallControl, resetAudioStop, transition]);
+  }, [audioStream.stream, authUserId, callService, companion, conversations, engineState, failAttempt, finishCall, handleLiveSemanticTurn, logCallControl, resetAudioStop, transition]);
   startCallRef.current = () => { void startCall(); };
   React.useEffect(() => {
     mountedRef.current = true;
@@ -1452,6 +1496,7 @@ export function VoiceCallScreen({ companionId }: { companionId?: string }) {
       mountedRef.current = false;
       sessionGenerationRef.current += 1;
       startInProgressRef.current = false;
+      callService.setSemanticTurnHandler(() => undefined);
       unsubscribeRef.current?.();
       unsubscribeRef.current = undefined;
       try {

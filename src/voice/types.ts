@@ -27,6 +27,8 @@ export interface CallProvider {
   end(): Promise<void>;
   setMuted(muted: boolean): Promise<void>;
   setSpeaker(speaker: boolean): Promise<void>;
+  setListening?(): void;
+  setSemanticTurnHandler?(handler: (turnText: string) => void): void;
   sendAudio?(buffer: AudioStreamBuffer): void;
   getState?(): LiveSessionState | CallLifecycle;
   onStateChange?(listener: (state: LiveSessionState, error?: string) => void): () => void;
