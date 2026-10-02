@@ -15,6 +15,56 @@ export interface ArchiveMessage {
 
 export interface ConversationArchive {
   appendMessage(message: ArchiveMessage): Promise<void>;
+  loadConversationMessages?(conversationId: string, userId?: string): Promise<Message[]>;
+  loadUserConversations?(userId?: string): Promise<Record<string, Message[]>>;
+}
+
+export function conversationRowToMessage(row: Record<string, unknown>): Message | null {
+  if (!row || typeof row !== 'object') return null;
+  const id = typeof row.id === 'string' ? row.id : null;
+  if (!id) return null;
+  const role = typeof row.role === 'string' ? row.role : 'user';
+  const modality = typeof row.modality === 'string' ? row.modality : 'text';
+  const type: Message['type'] = modality === 'voice_message' ? 'voice' : modality === 'live_call' ? 'call' : 'text';
+  const metadata = row.metadata && typeof row.metadata === 'object' ? row.metadata as Record<string, unknown> : {};
+  const timestampValue = typeof row.created_at === 'string' ? row.created_at : new Date().toISOString();
+  const voiceDuration = typeof metadata.voiceDuration === 'number' ? metadata.voiceDuration : undefined;
+  const voiceTranscription = typeof metadata.voiceTranscription === 'string' ? metadata.voiceTranscription : undefined;
+  const callOutcome = typeof metadata.callOutcome === 'string' ? metadata.callOutcome as Message['callOutcome'] : undefined;
+  const callDuration = typeof metadata.callDuration === 'number' ? metadata.callDuration : undefined;
+  const callStartedAt = typeof metadata.callStartedAt === 'string' ? metadata.callStartedAt : undefined;
+  const callEndedAt = typeof metadata.callEndedAt === 'string' ? metadata.callEndedAt : undefined;
+  const callFailureReason = typeof metadata.callFailureReason === 'string' ? metadata.callFailureReason : undefined;
+  const attachments = Array.isArray(metadata.attachments) ? metadata.attachments as Message['attachments'] : undefined;
+  const isVoice = type === 'voice';
+  const text = typeof row.content === 'string' ? row.content : '';
+
+  return {
+    id,
+    fromMe: role === 'user',
+    type,
+    text: isVoice ? text : text,
+    status: 'delivered',
+    timestamp: new Date(timestampValue),
+    voiceDuration,
+    voiceTranscription,
+    callId: typeof metadata.callId === 'string' ? metadata.callId : undefined,
+    callDuration,
+    callStartedAt,
+    callEndedAt,
+    callOutcome,
+    callFailureReason,
+    callProvider: typeof metadata.callProvider === 'string' ? metadata.callProvider as Message['callProvider'] : undefined,
+    callUserId: typeof metadata.callUserId === 'string' ? metadata.callUserId : undefined,
+    callCompanionId: typeof metadata.callCompanionId === 'string' ? metadata.callCompanionId : undefined,
+    attachments,
+    replyToId: typeof metadata.replyToId === 'string' ? metadata.replyToId : undefined,
+    replyToText: typeof metadata.replyToText === 'string' ? metadata.replyToText : undefined,
+    replyToAuthor: typeof metadata.replyToAuthor === 'string' ? metadata.replyToAuthor : undefined,
+    proactiveEventId: typeof metadata.proactiveEventId === 'string' ? metadata.proactiveEventId : undefined,
+    groupId: typeof metadata.groupId === 'string' ? metadata.groupId : undefined,
+    responseTargetId: typeof metadata.responseTargetId === 'string' ? metadata.responseTargetId : undefined,
+  };
 }
 
 export function archiveRecordFromMessage(input: {

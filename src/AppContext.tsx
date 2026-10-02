@@ -19,6 +19,7 @@ import { applyRelationshipSignal } from './relationship/engine';
 import type { Attachment } from './attachments/model';
 import { BackendTextToSpeechProvider } from './voice/backendTts';
 import { createAssistantVoiceMessage } from './voice/messagePipeline';
+import { createHealthCheckGeneration, engineHealthChecker } from './ai/engineHealth';
 import { appendArchiveSafely, archiveRecordFromMessage, conversationArchive } from './archive';
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -47,6 +48,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [companions]);
   const proactiveDispatchingRef = useRef(false);
   const appActiveRef = useRef(AppState.currentState !== 'background');
+  const engineHealthGenerationRef = useRef(createHealthCheckGeneration());
   const [groups, setGroups] = useState<Group[]>(INITIAL_GROUPS);
   const [conversations, setConversations] = useState<Record<string, Message[]>>(INITIAL_CONVERSATIONS);
   const [groupConversations, setGroupConversations] = useState<Record<string, Message[]>>({});
@@ -62,34 +64,35 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!authUserId) return;
     let active = true;
+    const healthGeneration = engineHealthGenerationRef.current;
     const refreshEngineState = async () => {
+      if (!active || AppState.currentState !== 'active') return;
+      const generation = healthGeneration.begin();
       setEngineStateValue('recovering');
       if (!isAIBackendConfigured()) {
-        setEngineStateValue('online');
+        if (active && healthGeneration.isCurrent(generation)) setEngineStateValue('online');
         return;
       }
       const healthUrl = backendHealthUrl(aiBackendUrl);
-      let healthy = false;
-      for (let attempt = 1; attempt <= 3 && active; attempt += 1) {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 5000);
-        try {
-          const response = await fetch(healthUrl, { method: 'GET', signal: controller.signal });
-          healthy = response.ok;
-          if (healthy) break;
-        } catch (error: unknown) {
-          if (__DEV__) console.warn(`[engine-health] attempt=${attempt} failed url=${healthUrl} error=${error instanceof Error ? error.message : 'unknown'}`);
-        } finally {
-          clearTimeout(timeout);
-        }
-        if (!healthy && attempt < 3) await new Promise((resolve) => setTimeout(resolve, 750));
-      }
-      if (!active) return;
+      const healthy = await engineHealthChecker.check(aiBackendUrl);
+      if (!active || AppState.currentState !== 'active' || !healthGeneration.isCurrent(generation)) return;
       if (__DEV__) console.log(`[engine-health] url=${healthUrl} status=${healthy ? 'online' : 'offline'}`);
       setEngineStateValue(healthy ? 'online' : 'offline');
     };
     void refreshEngineState();
-    return () => { active = false; };
+    const subscription = AppState.addEventListener('change', (state) => {
+      appActiveRef.current = state === 'active';
+      if (state === 'active') {
+        void refreshEngineState();
+      } else {
+        healthGeneration.invalidate();
+      }
+    });
+    return () => {
+      active = false;
+      healthGeneration.invalidate();
+      subscription.remove();
+    };
   }, [authUserId, brain]);
 
   useEffect(() => {
@@ -139,19 +142,33 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!authUserId) return;
     let active = true;
     hydratedRef.current = false;
-    void hydrateState({ companions: COMPANIONS, conversations: INITIAL_CONVERSATIONS, groupConversations: {}, groups: INITIAL_GROUPS }, authUserId).then((hydrated) => {
-      if (!active) return;
-      setCompanions(hydrated.companions);
-      setConversations(hydrated.conversations);
-      setGroupConversations(hydrated.groupConversations);
-      setGroups(hydrated.groups);
-      hydratedRef.current = true;
-      setHydrationStatus('ready');
-    }).catch(() => {
-      if (!active) return;
-      hydratedRef.current = true;
-      setHydrationStatus('recovered');
-    });
+    void (async () => {
+      try {
+        const localHydrated = await hydrateState({ companions: COMPANIONS, conversations: INITIAL_CONVERSATIONS, groupConversations: {}, groups: INITIAL_GROUPS }, authUserId);
+        const archiveConversations = conversationArchive && typeof conversationArchive.loadUserConversations === 'function'
+          ? await conversationArchive.loadUserConversations(authUserId)
+          : {};
+
+        const mergedConversations = Object.fromEntries(Array.from(new Set([...Object.keys(localHydrated.conversations), ...Object.keys(archiveConversations)])).map((conversationId) => {
+          const merged = [...(localHydrated.conversations[conversationId] || []), ...(archiveConversations[conversationId] || [])];
+          const deduped = new Map<string, Message>();
+          for (const message of merged) deduped.set(message.id, message);
+          return [conversationId, [...deduped.values()].sort((left, right) => left.timestamp.getTime() - right.timestamp.getTime())];
+        }));
+
+        if (!active) return;
+        setCompanions(localHydrated.companions);
+        setConversations(mergedConversations);
+        setGroupConversations(localHydrated.groupConversations);
+        setGroups(localHydrated.groups);
+        hydratedRef.current = true;
+        setHydrationStatus('ready');
+      } catch {
+        if (!active) return;
+        hydratedRef.current = true;
+        setHydrationStatus('recovered');
+      }
+    })();
     return () => { active = false; };
   }, [authUserId]);
 
@@ -204,6 +221,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await signOutService().catch((error: unknown) => setAuthError(error instanceof Error ? error.message : 'Unable to sign out.'));
     setAuthStatus('signed-out');
     setAuthUserId(null);
+    setConversations({});
+    setGroupConversations({});
     setTabStacks(INITIAL_TAB_STACKS);
     setActiveTab('chats');
   }, []);
